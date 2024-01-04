@@ -3,88 +3,44 @@
 
 <head>
 	<meta charset="UTF-8" />
-	<link rel="icon" type="image/svg+xml" href="/vite.svg" />
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-	<title>Vite App</title>
-	<link rel="preconnect" href="https://fonts.googleapis.com">
-	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-	<link
-		href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;200;300;400;500;600;700;800;900&display=swap"
-		rel="stylesheet">
+	<title>Tetris</title>
 </head>
 
 <body>
-	<div class="wrap">
-		<!-- Header 영역 : Start -->
-		<div class="intro_bg">
-			<div class="header">
-				<div class="search_area">
-					<form >
-						<input type="search" placeholder="Search">
-						<span>검색</span>
-					</form>
-				</div>
-				<ul class="nav">
-					<li><a href="#">HOME</a></li>
-					<li><a href="#">ABOUT</a></li>
-					<li><a href="#">SERVICE</li></a></li>
-					<li><a href="#">CONTACT</li></a></li>
-				</ul>
-			</div>
-			<div class="intro_text">
-				<h1>총알오징어, 세마리에 만원</h1>
-				<h4 class="contents1">우리는 전기를 이용해 실수인척 새끼 오징어를 불법 포획합니다.</h4>
-			</div>
-		</div>
-		<!-- Header 영역 : End -->
-
-		<!-- Amount : Start -->
-		<ul class="amount">
+	<div class="container">
+		<ul class="score_board">
+			<li></li>
 			<li>
-				<div>
-					<div class="content1">지금까지 해먹은 돈</div>
-					<div class="result">$ 128,021</div>
+				<div class="score_board">
+				 	<ul>
+						<li>점수</li>
+						<li id="player_score_board">0</li>
+					</ul>
 				</div>
 			</li>
 			<li>
-				<div>
-					<div class="content1">씨를 말린 오징어 마릿수</div>
-					<div class="result">$ 93,234</div>
-				</div>
-			</li>
-			<li>
-				<div>
-					<div class="content1">최종 목표 마릿수</div>
-					<div class="result">$ 100,000+</div>
-				</div>
-			</li>
-			<li>
-				<div>
-					<div class="content1">와사비 간장</div>
-					<div class="result">$ 57,221,084</div>
+				<div class="score_board">
+					<ul>
+						<li>점수</li>
+						<li id="other_player_score_board">0</li>
+					</ul>
 				</div>
 			</li>
 		</ul>
-		<!-- Amount : End -->
-
-		<div class="main_text0">
-			<h1>ABOUT</h1>
-			<div class="contents1">우리는 재규어처럼 재빠르게, 남들과는 다르게 오징어를 낚아챕니다.</div>
-			<ul class="icons">
-				<li>
-					<div>
-						
-					</div>
-
-				</li>
-				<li></li>
-				<li></li>
-			</ul>
-		</div>
-
-
-
-
+		<ul class="game_area">
+			<li></li>
+			<li>
+				<div class="game_title">내 플레이 화면</div>
+				<div class="game_play" id="player_game_board">
+				</div>
+			</li>
+			<li>
+				<div class="game_title">상태 플레이 화면</div>
+				<div class="game_play" id="other_player_game_board">
+			   </div>
+			</li>
+		</ul>
 	</div>
 
 
@@ -92,5 +48,3 @@
 </body>
 
 </html>
-<!-- https://www.youtube.com/watch?v=HGTJBPNC-Gw -->
-<!-- https://www.youtube.com/watch?v=MjmUpXhaqRM -->
