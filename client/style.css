@@ -56,3 +56,22 @@
 .game_play > ul li:first-child {
     border-left: 1px solid gray;
 }
+
+
+#waitModel {
+    position: fixed; /* 화면에 항상 나타나도록 fixed로 설정 */
+    top: 0;
+    left: 0;
+    width: 100vw; /* 뷰포트의 전체 너비 */
+    height: 100vh; /* 뷰포트의 전체 높이 */
+    background-color: red; /* 배경색을 red로 설정 */
+    z-index: 1000; /* 다른 요소들 위에 나타나도록 z-index 설정 */
+    display: none;
+}
+
+#waitModel div {
+    position: fixed; /* or absolute */
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}

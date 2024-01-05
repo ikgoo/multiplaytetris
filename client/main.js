@@ -1,12 +1,69 @@
 import './style.css'
 import { blockList, blockColor } from './blockData'
 
+
+const wsUrl = "ws://localhost:3000"
+const socket = new WebSocket(wsUrl)
+
+// 웹소켓 연결이 열릴 때 실행될 이벤트
+socket.onopen = function (event) {
+    socket.send(JSON.stringify({command : 'CREATE_OR_JOIN'}))
+};
+
+// 서버로부터 메시지를 받을 때 실행될 이벤트
+socket.onmessage = function (event) {
+    let data = JSON.parse(event.data)
+    switch(data.command) {
+        case 'WAIT':
+            waitModelToogle(true)
+            gameData.state = gameState.Wait
+            break
+        case 'READY':
+            waitModelToogle(false)
+            lastTime = 0
+            gameData.state = gameState.Ready
+            break
+
+        case 'PUT_GAME_DATA':
+            otherPlayerBoard = data.data.PlayerBoard
+            break
+
+        case 'EXIT':
+            gameData.state = gameState.Wait
+            waitModelToogle(true)
+            alert('상대가 게임에서 나갔습니다.')
+            socket.send(JSON.stringify({command : 'WAIT'}))
+            break
+
+        case 'WIN':
+            gameData.state = gameState.GameOver
+            alert('게임에서 승리')
+            break
+    }
+    console.log("Received message from server: " + data.command);
+};
+
+// 웹소켓 연결이 닫힐 때 실행될 이벤트
+socket.onclose = function (event) {
+    console.log("Disconnected from WebSocket server.");
+};
+
+// 오류 발생 시 실행될 이벤트
+socket.onerror = function (error) {
+    console.error("WebSocket error: " + error);
+};
+
 // 마지막 시간
 var lastTime = 0
+// 틱 카운트
+var tickCount = 0
 // 1초 계산용
 var tickTime = 0
-// 떨어지는 속도
-var dropTime = 300
+// 레벨업 틱
+var levelUpTick = 30
+// 레벨 디자인
+var gameLevels = [300, 250, 200, 150, 100, 50]
+var currentLevel = 0
 
 // 테트리스 사이즈 정의
 var tetrisBaseSize = {
@@ -46,7 +103,7 @@ var gameState = {
 }
 // 게임 정보
 var gameData = {
-    state : gameState.Ready
+    state : gameState.Wait
 }
 
 // 플레이어 점수
@@ -60,26 +117,38 @@ var elePlayerScoreBoard = document.querySelector('#player_score_board')
 // 플레이어 게임판
 var elePlayerGameBoard = document.querySelector('#player_game_board')
 
-// // 상대 플레이어 점수
-// var other_player_score = 0
-// // 상대 플레이어 게임판
-// var other_player_board = []
-// // 상대 플레이어 점수
-// var ele_other_player_score_board = document.querySelector('#other_player_score_board')
-// // 상대 플레이어 게임판
-// var ele_other_player_game_board = document.querySelector('#other_player_game_board')
+// 대기중 모달
+var eleWaitModel = document.querySelector('#waitModel')
+
+// 상대 플레이어 점수
+var otherPlayerScore = 0
+// 상대 플레이어 게임판
+var otherPlayerBoard = []
+// 상대 플레이어 게임판 제어를 위한 엘리먼트 배열
+var eleOtherPlayerBoard = []
+// 상대 플레이어 점수
+var eleOtherPlayerScoreBoard = document.querySelector('#other_player_score_board')
+// 상대 플레이어 게임판
+var eleOtherPlayerGameBoard = document.querySelector('#other_player_game_board')
 
 window.onload = function() {
+
     init()
 }
 
 function init() {
+    tickCount = 0
     // 초기화
     playerScore = 0
+    otherPlayerScore = 0
 
     // 플레이어 게임판 초기화
     playerBoard = []
-    createGameBoardElement(elePlayerGameBoard, playerBoard)
+    createGameBoardElement(elePlayerGameBoard, elePlayerBoard, playerBoard)
+
+    // 상대 플레이어 게임판 초기화
+    otherPlayerBoard = []
+    createGameBoardElement(eleOtherPlayerGameBoard, eleOtherPlayerBoard, otherPlayerBoard)
 
     // 다음 블럭 관련 초기화
     let tmpEleNextBlock = document.querySelectorAll('#nextBlock li')
@@ -96,7 +165,7 @@ function init() {
     requestAnimationFrame(gameloop)
 }
 
-function createGameBoardElement(eleBoard, board) {
+function createGameBoardElement(eleGameBoard, eleBoard, board) {
     for(let i = 0; i < tetrisBaseSize.height; i++) {
         let row = []
         let eleRow = []
@@ -108,8 +177,8 @@ function createGameBoardElement(eleBoard, board) {
             eleRow.push(li)
         }
         board.push(row)
-        elePlayerBoard.push(eleRow)
-        eleBoard.appendChild(ul);
+        eleBoard.push(eleRow)
+        eleGameBoard.appendChild(ul);
     }
 
 }
@@ -119,7 +188,6 @@ function update(delta) {
     
     switch(gameData.state) {
         case gameState.Wait:
-            // 
             break
         case gameState.Ready:
             // 현재 블럭
@@ -145,10 +213,8 @@ function update(delta) {
 
 // 한칸 아래 이동 로직
 function procNextBlockDrop() {
-    if(tickTime > dropTime) {
+    if(tickTime > gameLevels[currentLevel]) {
 
-        // tetrisBaseSize
-        
         if(currentBlock.is_show) {
             let tmpBlockData = blockList[currentBlock.blockNum][currentBlock.blockType]
 
@@ -162,7 +228,7 @@ function procNextBlockDrop() {
                 }
 
                 // 게임판 블럭과 충돌 체크
-                if(playerBoard[chkYPos][chkXPos] != -1) {
+                if(chkYPos > 0 && playerBoard[chkYPos][chkXPos] != -1) {
                     endBlockDrop()
                     break
                 }
@@ -187,8 +253,34 @@ function procNextBlockDrop() {
 
         }
 
+        tickCount++
+        if(levelUpTick < tickCount) {
+            currentLevel++
+            if(currentLevel == gameLevels.length) {
+                currentLevel--
+            }
+            tickCount = 0
+        }
+        tickTime -= gameLevels[currentLevel]
 
-        tickTime -= dropTime
+        // 상대 플레이어에게 내 상태 전송
+        let tmpPlayerBoard = JSON.parse(JSON.stringify(playerBoard))
+        var currentblockData = blockList[currentBlock.blockNum][currentBlock.blockType]
+
+        for(let i = 0; i < currentblockData.length; i++) {
+            var xPos = currentBlock.xPos + currentblockData[i][1]
+            var yPos = currentBlock.yPos + currentblockData[i][0]
+            if(xPos < 0 || yPos < 0) continue
+            tmpPlayerBoard[yPos][xPos] = currentBlock.blockNum
+        }
+
+        socket.send(JSON.stringify({
+            command : 'PUT_GAME_DATA',
+            data : {
+                playerScore,
+                PlayerBoard : tmpPlayerBoard
+            }
+        }))
     }
 }
 
@@ -205,8 +297,9 @@ function endBlockDrop() {
 
         if(yPos < 0) {
             // 게임 종료
-            console.log('game over')
-            gameData.state = gameState.GameOver
+            gameData.state = gameState.Wait
+            waitModelToogle()
+            alert('게임 오버')
 
         } else {
             playerBoard[yPos][xPos] = currentBlock.blockNum
@@ -266,7 +359,8 @@ function render(delta) {
         case gameState.Ready:
             break
         case gameState.Play:
-            playerGameBordRender()
+            GameBordRender(elePlayerBoard, playerBoard)
+            GameBordRender(eleOtherPlayerBoard, otherPlayerBoard)
             nextBlockRender()
 
             if(currentBlock.is_show) {
@@ -283,16 +377,6 @@ function render(delta) {
 
 }
 
-// 현재 블럭 타입을 변경 로직
-function changeCurrentBlockType() {
-    // 변경할때 벽이나 다른 블러과 충돌하는지 체크
-    // 추후 작업 할 것
-
-    // 이상 없다면 타입 변경 처리
-    let blockTypeCount = blockList[currentBlock.blockNum].length
-    let nextType = (currentBlock.blockType + 1) % blockTypeCount
-    currentBlock.blockType = nextType
-}
 
 function nextBlockRender() {
     var nextblockData = blockList[nextBlock.blockNum][0]
@@ -322,14 +406,15 @@ function currentBlockRender() {
     }
 }
 
-// 플레이어 게임판 랜더링
-function playerGameBordRender() {
-    for(let i = 0; i < elePlayerBoard.length; i++) {
-        for(let j = 0; j < elePlayerBoard[i].length; j++) {
-            if(playerBoard[i][j] == -1) {
-                elePlayerBoard[i][j].style.backgroundColor = 'white'
+
+// 플레이어 게임판 랜더링(elePlayerBoard, playerBoard)
+function GameBordRender(eleBoard, board) {
+    for(let i = 0; i < eleBoard.length; i++) {
+        for(let j = 0; j < eleBoard[i].length; j++) {
+            if(board[i][j] == -1) {
+                eleBoard[i][j].style.backgroundColor = 'white'
             } else {
-                elePlayerBoard[i][j].style.backgroundColor = blockColor[playerBoard[i][j]]
+                eleBoard[i][j].style.backgroundColor = blockColor[board[i][j]]
             }
         }
     }
@@ -372,6 +457,50 @@ document.addEventListener('keydown', function(event) {
     }
 })
 
+// 현재 블럭 타입을 변경 로직
+function changeCurrentBlockType() {
+    let blockTypeCount = blockList[currentBlock.blockNum].length
+    let nextType = (currentBlock.blockType + 1) % blockTypeCount
+
+    // 변경할때 벽이나 다른 블러과 충돌하는지 체크
+    let tmpBlockData = blockList[currentBlock.blockNum][nextType]
+    let is_ok = true        // 변경시 문제 없는지
+    for(let i = 0; i < tmpBlockData.length; i++) {
+        let chkYPos = tmpBlockData[i][0] + currentBlock.yPos
+        // if(chkYPos < 0) {
+        //     is_ok = false
+        //     break
+        // }
+
+        let chkXPos = tmpBlockData[i][1] + currentBlock.xPos
+        // 왼쪽 벽을 넘어 섰는지
+        if(0 > chkXPos) {
+            debugger
+            is_ok = false
+            break
+        }
+
+        // 오른쪽 벽을 넘어 섰는지
+        if(tetrisBaseSize.width < chkXPos) {
+            debugger
+            is_ok = false
+            break
+        }
+
+        // 게임판 블럭과 충돌 체크
+        if(chkYPos > 0 && playerBoard[chkYPos][chkXPos] != -1) {
+            debugger
+            is_ok = false
+            break
+        }
+    }
+
+    if(is_ok) {
+        // 이상 없다면 타입 변경 처리
+        currentBlock.blockType = nextType
+    }
+}
+
 // 왼쪽, 오른쪽 이동 가능 확인
 function checkLeftRight(direction) {
 
@@ -408,6 +537,7 @@ function procDownBlock() {
     for(let h = 0; h < tetrisBaseSize.height; h++) {
         for(let i = 0; i < tmpBlockData.length; i++) {
             let chkYPos = tmpBlockData[i][0] + currentBlock.yPos + h
+            if(chkYPos < 0) continue
             
             let chkXPos = tmpBlockData[i][1] + currentBlock.xPos
 
@@ -428,4 +558,13 @@ function procDownBlock() {
         }
     }
 
+}
+
+// 대기중 모달 토글
+function waitModelToogle(is_show) {
+    if(is_show) {
+        eleWaitModel.style.display = 'block'
+    } else {
+        eleWaitModel.style.display = 'none'
+    }
 }
